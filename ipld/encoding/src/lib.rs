@@ -35,7 +35,7 @@ where
     T: ser::Serialize + ?Sized,
 {
     let mut vec = Vec::new();
-    value.serialize(&mut serde_ipld_dagcbor::Serializer::new(&mut vec))?;
+    ciborium::ser::into_writer(value, &mut vec)?;
     Ok(vec)
 }
 
@@ -45,7 +45,7 @@ where
     T: de::DeserializeOwned,
     R: io::Read,
 {
-    serde_ipld_dagcbor::from_reader(reader).map_err(Into::into)
+    ciborium::de::from_reader(reader).map_err(Into::into)
 }
 
 /// Decode a value from CBOR from the given slice.
@@ -53,7 +53,7 @@ pub fn from_slice<'a, T>(slice: &'a [u8]) -> Result<T, Error>
 where
     T: de::Deserialize<'a>,
 {
-    serde_ipld_dagcbor::from_slice(slice).map_err(Into::into)
+    ciborium::de::from_reader(slice).map_err(Into::into)
 }
 
 /// Encode a value as CBOR to the given writer.
@@ -62,5 +62,5 @@ where
     W: io::Write,
     T: ser::Serialize,
 {
-    serde_ipld_dagcbor::to_writer(writer, value).map_err(Into::into)
+    ciborium::ser::into_writer(value, writer).map_err(Into::into)
 }
