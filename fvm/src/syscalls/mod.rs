@@ -29,13 +29,29 @@ pub struct InvocationData<K> {
     /// The last-seen syscall error. This error is considered the abort "cause" if an actor aborts
     /// after receiving this error without calling any other syscalls.
     pub last_error: Option<backtrace::Cause>,
+
+    /// A snapshot is _taken_ every time execution returns _from_ WASM.
+    /// This happens at the start of a syscall invocation as well as the end of WASM invocation.
+    /// The snapshot is _updated_ every time execution moves _into_ WASM.
+    /// This happens at the first WASM invocation, and at the end of a syscall invocation.
+    /// Before a snapshot is _updated_, fuel is consumed based on the delta.
+    pub gas_available_snapshot: i64,
+
+    /// A snapshot is _taken_ every time execution moves _into_ WASM.
+    /// This happens at the first WASM invocation, and at the end of a syscall invocation.
+    /// The snapshot is _updated_ every time execution returns _from_ WASM.
+    /// This happens at the start of a syscall invocation as well as the end of WASM invocation.
+    /// Before a snapshot is _updated_, gas is consumed based on the delta.
+    pub fuel_consumed_snapshot: u64,
 }
 
 impl<K> InvocationData<K> {
-    pub(crate) fn new(kernel: K) -> Self {
+    pub(crate) fn new(kernel: K, gas_available: i64) -> Self {
         Self {
             kernel,
             last_error: None,
+            gas_available_snapshot: gas_available,
+            fuel_consumed_snapshot: 0,
         }
     }
 }

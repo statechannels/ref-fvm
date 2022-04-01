@@ -1,10 +1,12 @@
-use anyhow::Context as _;
+use anyhow::Context;
 use derive_more::{Deref, DerefMut};
 use fvm_ipld_encoding::{RawBytes, DAG_CBOR};
 use fvm_shared::actor::builtin::Type;
 use fvm_shared::address::{Address, Protocol};
 use fvm_shared::econ::TokenAmount;
 use fvm_shared::error::ExitCode;
+use fvm_shared::error::ExitCode::ErrPlaceholder;
+use fvm_shared::version::NetworkVersion;
 use fvm_shared::{ActorID, MethodNum, METHOD_SEND};
 use num_traits::Zero;
 
@@ -294,7 +296,23 @@ where
             };
 
             // Make a store.
+            let gas_available = kernel.gas_available();
+            let fuel_to_add = match kernel.network_version() {
+                NetworkVersion::V14 => u64::MAX,
+                NetworkVersion::V15 => u64::MAX,
+                _ => kernel.price_list().gas_to_fuel(gas_available),
+            };
+
             let mut store = engine.new_store(kernel);
+            match store.add_fuel(fuel_to_add) {
+                Err(err) => {
+                    return (
+                        Err(ExecutionError::Fatal(err)),
+                        store.into_data().kernel.take(),
+                    );
+                }
+                Ok(_) => {}
+            }
 
             // Instantiate the module.
             let instance = match engine
@@ -309,18 +327,40 @@ where
             // From this point on, there are no more syscall errors, only aborts.
             let result: std::result::Result<RawBytes, Abort> = (|| {
                 // Lookup the invoke method.
-                let invoke: wasmtime::TypedFunc<(u32,), u32> = instance
+                let invoke: wasmtime::TypedFunc<(u32, ), u32> = instance
                     .get_typed_func(&mut store, "invoke")
                     // All actors will have an invoke method.
                     .map_err(Abort::Fatal)?;
 
                 // Invoke it.
-                let return_block_id = invoke.call(&mut store, (param_id,))?;
+                let res = invoke.call(&mut store, (param_id, ));
+                let fuel_consumed = match store
+                    .fuel_consumed() {
+                    Some(v) => v,
+                    None => 0,
+                };
+                let fuel_consumed_gas_charge = store.data().kernel.price_list().on_consume_fuel(fuel_consumed);
+
+                let gas_available = store.data().kernel.gas_available();
+
+                if fuel_consumed_gas_charge.total()
+                    > gas_available
+                {
+                    log::trace!("out of gas resulting from fuel charging (gas available {}, fuel consumed {}", gas_available, fuel_consumed_gas_charge.total());
+                    return Err(Abort::OutOfGas);
+                }
+
+                // TODO: better code?
+                store.data_mut().kernel.charge_fuel(fuel_consumed).map_err(|e| Abort::from_error(ErrPlaceholder, e))?;
+
+                // If the invocation failed due to running out of fuel, we have already detected it and returned OutOfGas above.
+                // Any other invocation failure is returned here as an Abort
+                let return_block_id = res?;
 
                 // Extract the return value, if there is one.
                 let return_value: RawBytes = if return_block_id > NO_DATA_BLOCK_ID {
                     let (code, ret) = store
-                        .data()
+                        .data_mut()
                         .kernel
                         .block_get(return_block_id)
                         .map_err(|e| Abort::from_error(ExitCode::SysErrIllegalActor, e))?;
@@ -332,6 +372,7 @@ where
 
                 Ok(return_value)
             })();
+
 
             let invocation_data = store.into_data();
             let last_error = invocation_data.last_error;
