@@ -23,12 +23,21 @@ pub mod state_tree;
 
 mod blockstore;
 
-mod account_actor;
-mod init_actor;
+cfg_if::cfg_if! {
+    if #[cfg(feature = "testing")] {
+        pub mod account_actor;
+        pub mod init_actor;
+        pub mod system_actor;
+    } else {
+        mod account_actor;
+        mod init_actor;
+        mod system_actor;
+    }
+}
+
 mod market_actor;
 mod power_actor;
 mod reward_actor;
-mod system_actor;
 
 pub mod trace;
 
