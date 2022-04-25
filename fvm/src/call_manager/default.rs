@@ -374,6 +374,7 @@ where
                     }?;
 
                 let available_gas = gas::frgas_to_gas(available_frgas, false); // available gas, so round down
+                println!("gas fr:{} av:{}", available_frgas, available_gas);
 
                 store
                     .data_mut()
