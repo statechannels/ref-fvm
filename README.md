@@ -6,8 +6,8 @@ This repository contains the reference implementation of the Filecoin VM ([specs
 
 ## Build requirements
 
-* The current MSRV (Minimum Supported Rust Version) is 1.58.1 (stable). A working version is tracked in `rust-toolchain` (this is picked up by `rustup` automatically).
-* Install [rustup](https://rustup.rs/).
+- The current MSRV (Minimum Supported Rust Version) is 1.58.1 (stable). A working version is tracked in `rust-toolchain` (this is picked up by `rustup` automatically).
+- Install [rustup](https://rustup.rs/).
 
 ## Build instructions
 
@@ -49,7 +49,7 @@ Here's what you'll find in each directory:
     - To run a specific test vector, run `VECTOR=test-vectors/corpus/specs_actors_v6/REST_OF_TEST_VECTOR.json cargo test -- conformance --nocapture`
     - To bench a specific test vector, run `VECTOR=test-vectors/corpus/specs_actors_v6/REST_OF_TEST_VECTOR.json cargo bench -- conformance --nocapture`
     - To bench the system's overhead for the setup of the machine for a given test vector, run `VECTOR=test-vectors/corpus/specs_actors_v6/REST_OF_TEST_VECTOR.json cargo bench -- overhead --nocapture`. Note that the vector choice doesn't matter much, because the Machine initialization procedure is identicall for all vectors.
-    - To get a perf flamegraph, run `CARGO_PROFILE_BENCH_DEBUG=true VECTOR=testing/conformance/test-vectors/corpus/specs_actors_v6/REST_OF_TEST_VECTOR.json  cargo flamegraph --bench bench_conformance -- --nocapture`. The output SVG will be in `flamegraph.svg`.
+    - To get a perf flamegraph, run `CARGO_PROFILE_BENCH_DEBUG=true VECTOR=testing/conformance/test-vectors/corpus/specs_actors_v6/REST_OF_TEST_VECTOR.json cargo flamegraph --bench bench_conformance -- --nocapture`. The output SVG will be in `flamegraph.svg`.
   - Overhead measurement scenarios. There are two overhead measurement scenarios included.
     1. `bench_init_only`: measure the overhead of running the benchmark itself, it doesn't send any messages to the FVM to process.
     2. `bench_500_simple_state_access`: measures the overhead of calling the `pubkey_address` method on an account actor 500 times, this is the most lightweight message possible to send that actually executes actor logic (unlike a bare send).
@@ -63,7 +63,7 @@ Here's what you'll find in each directory:
 - Alpha:
   - Declared when: all test vectors passing, integrated into Lotus via FFI.
   - Focus: theoretical correctness.
-- Beta: 
+- Beta:
   - Declared when: all the above + syncing mainnet consistently, keeping up with chain consistently, i.e. when Phase 0 from the [FVM milestone roadmap](https://filecoin.io/blog/posts/introducing-the-filecoin-virtual-machine/) is reached.
   - Focus: production-readiness, performance, live consensus correctness.
 - RC:
@@ -95,3 +95,11 @@ Dual-licensed: [MIT](./LICENSE-MIT), [Apache Software License v2](./LICENSE-APAC
 
 actors and vm forked from [ChainSafe/forest](https://github.com/ChainSafe/forest)
 commit: [`73e8f95a108902c6bef44ee359a8478663844e5b`](https://github.com/ChainSafe/forest/commit/73e8f95a108902c6bef44ee359a8478663844e5b)
+
+---
+
+# Developing a Nitro Adjudicator Actor
+
+```
+cargo test --package fvm_integration_tests --features wasm-coverage --package "*actor"
+```
